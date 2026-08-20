@@ -1,8 +1,9 @@
-const COLS = 6;
+const COLS = 5;
 const H_GAP = 280;
 const V_GAP = 160;
+const PAGE_SIZE = 10;
 
-export function buildGraph(schema, filter, focusedNode, searchTerm) {
+export function buildGraph(schema, filter, focusedNode, searchTerm, page = 0) {
   let objects = schema;
 
   if (filter === 'platform') objects = schema.filter(o => !o.custom && o.cloudBadge === 'Platform');
@@ -60,6 +61,11 @@ export function buildGraph(schema, filter, focusedNode, searchTerm) {
     objects = objects.filter(o => directNeighbors.has(o.name));
   }
 
+  const totalObjects = objects.length;
+  const totalPages = Math.ceil(totalObjects / PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(0, totalPages - 1));
+  objects = objects.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
   const objectNames = new Set(objects.map(o => o.name));
 
   const nodes = objects.map((obj, i) => ({
@@ -107,5 +113,5 @@ export function buildGraph(schema, filter, focusedNode, searchTerm) {
     }
   }
 
-  return { nodes, edges };
+  return { nodes, edges, totalObjects, totalPages, currentPage: safePage };
 }

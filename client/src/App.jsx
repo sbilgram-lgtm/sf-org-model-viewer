@@ -148,6 +148,10 @@ export default function App() {
   const [showEdgeLabels, setShowEdgeLabels] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [focusedNode, setFocusedNode] = useState(null);
+  const [page, setPage] = useState(0);
+
+  const handleFilterChange = (f) => { setFilter(f); setPage(0); };
+  const handleSearchChange = (e) => { setSearchTerm(e.target.value); setPage(0); };
 
   // Login form state
   const [loginUrl, setLoginUrl] = useState('');
@@ -248,12 +252,12 @@ export default function App() {
         </header>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, flexWrap: 'wrap' }}>
-          <FilterBar value={filter} onChange={setFilter} schema={schema} />
+          <FilterBar value={filter} onChange={handleFilterChange} schema={schema} />
           <input
             style={{ padding: '6px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, width: 220, outline: 'none' }}
             placeholder="Search objects..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
           />
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', cursor: 'pointer' }}>
             <input type="checkbox" checked={showEdgeLabels} onChange={e => setShowEdgeLabels(e.target.checked)} />
@@ -299,7 +303,9 @@ export default function App() {
               showEdgeLabels={showEdgeLabels}
               focusedNode={focusedNode}
               onNodeClick={node => setSelectedNode(node.data)}
-              onFocusNode={name => setFocusedNode(name)}
+              onFocusNode={name => { setFocusedNode(name); setPage(0); }}
+              page={page}
+              onPageChange={setPage}
             />
           )}
           {selectedNode && (

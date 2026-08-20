@@ -108,13 +108,13 @@ function RelationshipLegend() {
   );
 }
 
-function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode, onNodeClick, onFocusNode }) {
+function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode, onNodeClick, onFocusNode, page, onPageChange }) {
   const { getNodes } = useReactFlow();
   const [edgeTooltip, setEdgeTooltip] = useState(null);
 
-  const { nodes: rawNodes, edges: rawEdges } = useMemo(
-    () => buildGraph(schema, filter, focusedNode, searchTerm),
-    [schema, filter, focusedNode, searchTerm]
+  const { nodes: rawNodes, edges: rawEdges, totalObjects, totalPages, currentPage } = useMemo(
+    () => buildGraph(schema, filter, focusedNode, searchTerm, page),
+    [schema, filter, focusedNode, searchTerm, page]
   );
 
   const styledNodes = useMemo(() =>
@@ -211,6 +211,24 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
         <Background color="#e2e8f0" gap={20} />
       </ReactFlow>
 
+      {totalPages > 1 && (
+        <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 14px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: 13 }}>
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 0}
+            style={{ background: 'none', border: 'none', cursor: currentPage === 0 ? 'default' : 'pointer', color: currentPage === 0 ? '#cbd5e1' : '#334155', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
+          >←</button>
+          <span style={{ color: '#64748b' }}>
+            <strong style={{ color: '#0f172a' }}>{currentPage * 10 + 1}–{Math.min((currentPage + 1) * 10, totalObjects)}</strong> of <strong style={{ color: '#0f172a' }}>{totalObjects}</strong> objects
+          </span>
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages - 1}
+            style={{ background: 'none', border: 'none', cursor: currentPage >= totalPages - 1 ? 'default' : 'pointer', color: currentPage >= totalPages - 1 ? '#cbd5e1' : '#334155', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
+          >→</button>
+        </div>
+      )}
+
       <div style={{ position: 'absolute', bottom: 16, right: 16, display: 'flex', gap: 8, zIndex: 10 }}>
         <button
           onClick={exportPdf}
@@ -253,3 +271,4 @@ export default function Diagram(props) {
     </ReactFlowProvider>
   );
 }
+
