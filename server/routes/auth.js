@@ -1,6 +1,14 @@
 const express = require('express');
+const crypto = require('crypto');
 const jsforce = require('jsforce');
+const axios = require('axios');
 const router = express.Router();
+
+function generatePkce() {
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  return { verifier, challenge };
+}
 
 function getBaseUrl(req) {
   if (process.env.BASE_URL) return process.env.BASE_URL;
@@ -18,54 +26,64 @@ router.get('/login', (req, res) => {
     return res.redirect(`${getBaseUrl(req)}/?error=missing_credentials`);
   }
 
+  const callbackUrl = process.env.SF_CALLBACK_URL || `${getBaseUrl(req)}/auth/callback`;
+  const { verifier, challenge } = generatePkce();
+
   req.session.loginUrl = loginUrl;
   req.session.clientId = clientId;
   req.session.clientSecret = clientSecret;
+  req.session.pkceVerifier = verifier;
+  req.session.callbackUrl = callbackUrl;
 
-  const callbackUrl = process.env.SF_CALLBACK_URL || `${getBaseUrl(req)}/auth/callback`;
-
-  const oauth2 = new jsforce.OAuth2({
-    loginUrl,
-    clientId,
-    clientSecret,
-    redirectUri: callbackUrl,
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: callbackUrl,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    scope: 'api id',
   });
 
-  res.redirect(oauth2.getAuthorizationUrl({ scope: 'api id' }));
+  res.redirect(`${loginUrl}/services/oauth2/authorize?${params}`);
 });
 
 router.get('/callback', async (req, res) => {
-  const { loginUrl, clientId, clientSecret } = req.session;
-  const callbackUrl = process.env.SF_CALLBACK_URL || `${getBaseUrl(req)}/auth/callback`;
+  const { loginUrl, clientId, clientSecret, pkceVerifier, callbackUrl } = req.session;
+  const base = process.env.BASE_URL || (process.env.NODE_ENV === 'production' ? `${req.protocol}://${req.get('host')}` : 'http://localhost:5173');
 
-  if (!clientId || !clientSecret) {
-    return res.redirect(`${getBaseUrl(req)}/?error=session_error`);
+  if (!clientId || !pkceVerifier) {
+    return res.redirect(`${base}/?error=session_error`);
   }
 
-  const oauth2 = new jsforce.OAuth2({
-    loginUrl: loginUrl || 'https://login.salesforce.com',
-    clientId,
-    clientSecret,
-    redirectUri: callbackUrl,
-  });
-
-  const conn = new jsforce.Connection({ oauth2 });
-
   try {
-    await conn.authorize(req.query.code);
+    const tokenRes = await axios.post(
+      `${loginUrl || 'https://login.salesforce.com'}/services/oauth2/token`,
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: callbackUrl || `${base}/auth/callback`,
+        code: req.query.code,
+        code_verifier: pkceVerifier,
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    const { access_token, instance_url, id } = tokenRes.data;
+    const conn = new jsforce.Connection({ accessToken: access_token, instanceUrl: instance_url });
     const identity = await conn.identity();
+
     req.session.sf = {
-      accessToken: conn.accessToken,
-      instanceUrl: conn.instanceUrl,
+      accessToken: access_token,
+      instanceUrl: instance_url,
       userId: identity.user_id,
       orgId: identity.organization_id,
       displayName: identity.display_name,
     };
-    const base = process.env.BASE_URL || (process.env.NODE_ENV === 'production' ? `${req.protocol}://${req.get('host')}` : 'http://localhost:5173');
+
     res.redirect(base);
   } catch (err) {
-    console.error('OAuth callback error:', err);
-    const base = process.env.BASE_URL || (process.env.NODE_ENV === 'production' ? `${req.protocol}://${req.get('host')}` : 'http://localhost:5173');
+    console.error('OAuth callback error:', err.response?.data || err.message);
     res.redirect(`${base}/?error=auth_failed`);
   }
 });
