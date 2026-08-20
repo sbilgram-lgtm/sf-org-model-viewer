@@ -113,15 +113,15 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
   const [edgeTooltip, setEdgeTooltip] = useState(null);
 
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
-    () => buildGraph(schema, filter, focusedNode),
-    [schema, filter, focusedNode]
+    () => buildGraph(schema, filter, focusedNode, searchTerm),
+    [schema, filter, focusedNode, searchTerm]
   );
 
   const styledNodes = useMemo(() =>
     rawNodes.map(n => ({
       ...n,
       data: { ...n.data, onFocus: onFocusNode },
-      style: searchTerm && n.data.name.toLowerCase().includes(searchTerm.toLowerCase())
+      style: searchTerm && (n.data.name.toLowerCase().includes(searchTerm.toLowerCase()) || n.data.label.toLowerCase().includes(searchTerm.toLowerCase()))
         ? { outline: '3px solid #f59e0b', borderRadius: 8 }
         : {},
     })),
@@ -173,6 +173,24 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
     };
     img.src = dataUrl;
   }, []);
+
+  if (rawNodes.length === 0) {
+    const messages = {
+      platform: 'No Platform objects found. Try switching to Standard or All.',
+      custom: 'No custom objects found in this org. Create custom objects in Salesforce Setup, then reconnect.',
+      standard: 'No standard objects found.',
+      all: searchTerm ? `No objects match "${searchTerm}". Try a different search term.` : 'No objects to display.',
+    };
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b', gap: 12 }}>
+        <div style={{ fontSize: 40 }}>🔍</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#334155' }}>No objects to display</div>
+        <div style={{ fontSize: 13, maxWidth: 360, textAlign: 'center', lineHeight: 1.5 }}>
+          {searchTerm ? `No objects match "${searchTerm}". Try a different search term.` : messages[filter] || messages.all}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex: 1, position: 'relative' }}>

@@ -143,7 +143,7 @@ const labelStyle = {
 
 export default function App() {
   const [auth, setAuth] = useState(null);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('platform');
   const [searchTerm, setSearchTerm] = useState('');
   const [showEdgeLabels, setShowEdgeLabels] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -248,7 +248,7 @@ export default function App() {
         </header>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, flexWrap: 'wrap' }}>
-          <FilterBar value={filter} onChange={setFilter} />
+          <FilterBar value={filter} onChange={setFilter} schema={schema} />
           <input
             style={{ padding: '6px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, width: 220, outline: 'none' }}
             placeholder="Search objects..."

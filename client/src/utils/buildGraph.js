@@ -2,11 +2,42 @@ const COLS = 6;
 const H_GAP = 280;
 const V_GAP = 160;
 
-export function buildGraph(schema, filter, focusedNode) {
+export function buildGraph(schema, filter, focusedNode, searchTerm) {
   let objects = schema;
 
-  if (filter === 'standard') objects = schema.filter(o => !o.custom);
+  if (filter === 'platform') objects = schema.filter(o => !o.custom && o.cloudBadge === 'Platform');
+  else if (filter === 'standard') objects = schema.filter(o => !o.custom);
   else if (filter === 'custom') objects = schema.filter(o => o.custom);
+
+  // When searching, keep only matching objects + their direct neighbors
+  if (searchTerm && searchTerm.trim()) {
+    const term = searchTerm.trim().toLowerCase();
+    const matchingNames = new Set(
+      objects.filter(o =>
+        o.name.toLowerCase().includes(term) || o.label.toLowerCase().includes(term)
+      ).map(o => o.name)
+    );
+
+    if (matchingNames.size > 0) {
+      const neighbors = new Set(matchingNames);
+      for (const obj of objects) {
+        if (!matchingNames.has(obj.name)) continue;
+        for (const f of obj.fields) {
+          if (f.referenceTo && f.referenceTo.length > 0) neighbors.add(f.referenceTo[0]);
+        }
+        for (const r of obj.childRelationships) {
+          neighbors.add(r.childSObject);
+        }
+      }
+      for (const obj of schema) {
+        if (matchingNames.has(obj.name)) continue;
+        for (const f of obj.fields) {
+          if (f.referenceTo && f.referenceTo.includes(obj.name)) neighbors.add(obj.name);
+        }
+      }
+      objects = objects.filter(o => neighbors.has(o.name));
+    }
+  }
 
   if (focusedNode) {
     const directNeighbors = new Set([focusedNode]);
