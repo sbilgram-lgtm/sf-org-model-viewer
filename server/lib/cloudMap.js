@@ -1,0 +1,132 @@
+const NAMESPACE_MAP = {
+  HealthCloud: 'Health Cloud',
+  FinServ: 'Financial Services Cloud',
+  mfgcloud: 'Manufacturing Cloud',
+  CGCloud: 'Consumer Goods Cloud',
+  hed: 'Education Cloud',
+  npsp: 'Nonprofit Success Pack',
+  npe: 'Nonprofit Success Pack',
+  npo: 'Nonprofit Success Pack',
+  EnergyUtility: 'Energy & Utilities Cloud',
+  vlocity_cmt: 'Communications Cloud',
+  vlocity_energy: 'Energy & Utilities Cloud',
+  vlocity_ins: 'Insurance Cloud',
+  omnistudio: 'OmniStudio',
+  PJF: 'Project & Financial Management',
+  RealEstate: 'Real Estate Cloud',
+  Automotive: 'Automotive Cloud',
+  RecordAlert: 'Financial Services Cloud',
+  BankingCore: 'Financial Services Cloud',
+  WealthManagement: 'Financial Services Cloud',
+  InsurancePolicy: 'Financial Services Cloud',
+  retail: 'Retail Cloud',
+  loyalty: 'Loyalty Management',
+  ESCAutoNumber: 'Service Cloud',
+  SVMXA360: 'ServiceMax (Field Service)',
+  FSL: 'Field Service',
+};
+
+const STANDARD_OBJECT_MAP = {
+  Opportunity: 'Sales Cloud',
+  OpportunityLineItem: 'Sales Cloud',
+  OpportunityContactRole: 'Sales Cloud',
+  Quote: 'Sales Cloud',
+  QuoteLineItem: 'Sales Cloud',
+  Contract: 'Sales Cloud',
+  ContractLineItem: 'Sales Cloud',
+  Order: 'Sales Cloud',
+  OrderItem: 'Sales Cloud',
+  Lead: 'Sales Cloud',
+  Campaign: 'Sales Cloud',
+  CampaignMember: 'Sales Cloud',
+  Pricebook2: 'Sales Cloud',
+  PricebookEntry: 'Sales Cloud',
+  Product2: 'Sales Cloud',
+  ForecastingItem: 'Sales Cloud',
+  ForecastingQuota: 'Sales Cloud',
+  Territory: 'Sales Cloud',
+  Territory2: 'Sales Cloud',
+  UserTerritory2Association: 'Sales Cloud',
+
+  Case: 'Service Cloud',
+  CaseComment: 'Service Cloud',
+  CaseContactRole: 'Service Cloud',
+  CaseMilestone: 'Service Cloud',
+  Entitlement: 'Service Cloud',
+  EntitlementContact: 'Service Cloud',
+  EntitlementTemplate: 'Service Cloud',
+  KnowledgeArticleVersion: 'Service Cloud',
+  LiveChatSession: 'Service Cloud',
+  LiveChatTranscript: 'Service Cloud',
+  LiveChatVisitor: 'Service Cloud',
+  MessagingSession: 'Service Cloud',
+  MessagingEndUser: 'Service Cloud',
+  ServiceContract: 'Service Cloud',
+  ServiceContractLineItem: 'Service Cloud',
+  ReturnOrder: 'Service Cloud',
+  ReturnOrderLineItem: 'Service Cloud',
+  Asset: 'Service Cloud',
+  AssetRelationship: 'Service Cloud',
+  Macro: 'Service Cloud',
+  QuickText: 'Service Cloud',
+
+  WorkOrder: 'Field Service',
+  WorkOrderLineItem: 'Field Service',
+  WorkType: 'Field Service',
+  WorkTypeGroup: 'Field Service',
+  WorkTypeGroupMember: 'Field Service',
+  ServiceTerritory: 'Field Service',
+  ServiceTerritoryMember: 'Field Service',
+  ServiceResource: 'Field Service',
+  ServiceResourceCapacity: 'Field Service',
+  ServiceAppointment: 'Field Service',
+  AssignedResource: 'Field Service',
+  ResourceAbsence: 'Field Service',
+  OperatingHours: 'Field Service',
+  TimeSlot: 'Field Service',
+
+  CampaignInfluence: 'Marketing Cloud',
+
+  Network: 'Experience Cloud',
+  NetworkMember: 'Experience Cloud',
+  NetworkActivityAudit: 'Experience Cloud',
+  Site: 'Experience Cloud',
+  SiteDomain: 'Experience Cloud',
+
+  Account: 'Platform',
+  Contact: 'Platform',
+  User: 'Platform',
+  Task: 'Platform',
+  Event: 'Platform',
+  Note: 'Platform',
+  Attachment: 'Platform',
+  ContentDocument: 'Platform',
+  ContentVersion: 'Platform',
+  ContentDocumentLink: 'Platform',
+  EmailMessage: 'Platform',
+  FeedItem: 'Platform',
+  Group: 'Platform',
+  GroupMember: 'Platform',
+  Profile: 'Platform',
+  PermissionSet: 'Platform',
+  PermissionSetAssignment: 'Platform',
+  RecordType: 'Platform',
+  BusinessHours: 'Platform',
+  Holiday: 'Platform',
+  QueueSobject: 'Platform',
+};
+
+function getCloudBadge(objectName, isCustom) {
+  const parts = objectName.split('__');
+  if (parts.length >= 2) {
+    const ns = parts[0];
+    if (NAMESPACE_MAP[ns]) return NAMESPACE_MAP[ns];
+    if (isCustom) return 'Custom (Org)';
+  }
+
+  if (STANDARD_OBJECT_MAP[objectName]) return STANDARD_OBJECT_MAP[objectName];
+
+  return isCustom ? 'Custom (Org)' : 'Platform';
+}
+
+module.exports = { getCloudBadge };
