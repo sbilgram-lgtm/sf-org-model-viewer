@@ -2,18 +2,55 @@ const express = require('express');
 const jsforce = require('jsforce');
 const router = express.Router();
 
-const oauth2 = new jsforce.OAuth2({
-  clientId: process.env.SF_CLIENT_ID,
-  clientSecret: process.env.SF_CLIENT_SECRET,
-  redirectUri: process.env.SF_CALLBACK_URL || 'http://localhost:3001/auth/callback',
-});
+function getBaseUrl(req) {
+  if (process.env.BASE_URL) return process.env.BASE_URL;
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction) return `${req.protocol}://${req.get('host')}`;
+  return 'http://localhost:5173';
+}
 
 router.get('/login', (req, res) => {
+  const loginUrl = (req.query.loginUrl || process.env.SF_LOGIN_URL || 'https://login.salesforce.com').replace(/\/$/, '');
+  const clientId = req.query.clientId || process.env.SF_CLIENT_ID;
+  const clientSecret = req.query.clientSecret || process.env.SF_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return res.redirect(`${getBaseUrl(req)}/?error=missing_credentials`);
+  }
+
+  req.session.loginUrl = loginUrl;
+  req.session.clientId = clientId;
+  req.session.clientSecret = clientSecret;
+
+  const callbackUrl = process.env.SF_CALLBACK_URL || `${getBaseUrl(req)}/auth/callback`;
+
+  const oauth2 = new jsforce.OAuth2({
+    loginUrl,
+    clientId,
+    clientSecret,
+    redirectUri: callbackUrl,
+  });
+
   res.redirect(oauth2.getAuthorizationUrl({ scope: 'api id' }));
 });
 
 router.get('/callback', async (req, res) => {
+  const { loginUrl, clientId, clientSecret } = req.session;
+  const callbackUrl = process.env.SF_CALLBACK_URL || `${getBaseUrl(req)}/auth/callback`;
+
+  if (!clientId || !clientSecret) {
+    return res.redirect(`${getBaseUrl(req)}/?error=session_error`);
+  }
+
+  const oauth2 = new jsforce.OAuth2({
+    loginUrl: loginUrl || 'https://login.salesforce.com',
+    clientId,
+    clientSecret,
+    redirectUri: callbackUrl,
+  });
+
   const conn = new jsforce.Connection({ oauth2 });
+
   try {
     await conn.authorize(req.query.code);
     const identity = await conn.identity();
@@ -24,10 +61,12 @@ router.get('/callback', async (req, res) => {
       orgId: identity.organization_id,
       displayName: identity.display_name,
     };
-    res.redirect('http://localhost:5173');
+    const base = process.env.BASE_URL || (process.env.NODE_ENV === 'production' ? `${req.protocol}://${req.get('host')}` : 'http://localhost:5173');
+    res.redirect(base);
   } catch (err) {
     console.error('OAuth callback error:', err);
-    res.status(500).send('Authentication failed');
+    const base = process.env.BASE_URL || (process.env.NODE_ENV === 'production' ? `${req.protocol}://${req.get('host')}` : 'http://localhost:5173');
+    res.redirect(`${base}/?error=auth_failed`);
   }
 });
 
