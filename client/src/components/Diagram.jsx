@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -109,7 +109,6 @@ function RelationshipLegend() {
 }
 
 function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode, onNodeClick, onFocusNode, page, onPageChange }) {
-  const { getNodes } = useReactFlow();
   const [edgeTooltip, setEdgeTooltip] = useState(null);
 
   const { nodes: rawNodes, edges: rawEdges, totalObjects, totalPages, currentPage } = useMemo(
@@ -142,8 +141,14 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
     [rawEdges, showEdgeLabels]
   );
 
-  const [nodes, , onNodesChange] = useNodesState(styledNodes);
-  const [edges, , onEdgesChange] = useEdgesState(styledEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(styledNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(styledEdges);
+
+  const { fitView } = useReactFlow();
+
+  useEffect(() => { setNodes(styledNodes); }, [styledNodes, setNodes]);
+  useEffect(() => { setEdges(styledEdges); }, [styledEdges, setEdges]);
+  useEffect(() => { setTimeout(() => fitView({ padding: 0.2 }), 50); }, [styledNodes, fitView]);
 
   const handleEdgeClick = useCallback((e, edge) => {
     setEdgeTooltip(edgeTooltip?.id === edge.id ? null : { id: edge.id, data: edge.data, x: e.clientX, y: e.clientY });
