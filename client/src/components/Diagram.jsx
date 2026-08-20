@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -16,13 +16,100 @@ import { buildGraph } from '../utils/buildGraph';
 const nodeTypes = { objectNode: ObjectNode };
 
 const EDGE_STYLES = {
-  masterDetail: { stroke: '#ef4444', strokeWidth: 3 },
-  lookup: { stroke: '#3b82f6', strokeWidth: 1.5, strokeDasharray: '5 3' },
-  hierarchical: { stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '2 2' },
+  masterDetail:  { stroke: '#ef4444', strokeWidth: 3 },
+  lookup:        { stroke: '#3b82f6', strokeWidth: 1.5, strokeDasharray: '5 3' },
+  hierarchical:  { stroke: '#9ca3af', strokeWidth: 1,   strokeDasharray: '2 2' },
 };
 
+const REL_DESCRIPTIONS = [
+  {
+    type: 'masterDetail',
+    color: '#ef4444',
+    dash: null,
+    label: 'Master-Detail',
+    desc: 'The child record is tightly owned by the parent. Deleting the parent automatically deletes all children (cascade delete). The lookup field on the child is required — the child cannot exist without a parent. Ownership and sharing are controlled by the parent.',
+    example: 'OpportunityLineItem → Opportunity',
+  },
+  {
+    type: 'lookup',
+    color: '#3b82f6',
+    dash: '5 3',
+    label: 'Lookup',
+    desc: 'A loosely coupled relationship. The child can exist independently of the parent. Deleting the parent does not delete the child by default (the lookup field is cleared or restricted). The field is typically optional.',
+    example: 'Contact → Account',
+  },
+  {
+    type: 'hierarchical',
+    color: '#9ca3af',
+    dash: '2 2',
+    label: 'Hierarchical',
+    desc: 'A special self-referencing lookup where a record of an object relates to another record of the same object, creating a parent-child hierarchy within a single object. In Salesforce this is only available as a standard field type on the User object (the Manager field).',
+    example: 'User → User (Manager)',
+  },
+];
+
+function RelationshipLegend() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10 }}>
+      {!open ? (
+        <div
+          onClick={() => setOpen(true)}
+          style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px', fontSize: 11, cursor: 'pointer', lineHeight: 2, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+        >
+          {REL_DESCRIPTIONS.map(r => (
+            <div key={r.type} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="24" height="10">
+                <line x1="0" y1="5" x2="24" y2="5"
+                  stroke={r.color}
+                  strokeWidth={r.type === 'masterDetail' ? 3 : r.type === 'lookup' ? 1.5 : 1}
+                  strokeDasharray={r.dash || ''}
+                />
+              </svg>
+              <span style={{ color: '#334155' }}>{r.label}</span>
+            </div>
+          ))}
+          <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 4, paddingTop: 4, color: '#94a3b8', fontSize: 10, textAlign: 'center' }}>
+            Click for descriptions
+          </div>
+        </div>
+      ) : (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px', fontSize: 12, width: 320, boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <strong style={{ fontSize: 13, color: '#0f172a' }}>Relationship Types</strong>
+            <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+          </div>
+          <div style={{ marginBottom: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+            <div style={{ fontWeight: 600, color: '#334155', marginBottom: 3 }}>What is a Relationship Edge?</div>
+            <div style={{ color: '#64748b', lineHeight: 1.5 }}>
+              The lines connecting two object nodes in the diagram. Each edge represents a field on the child object that references (points to) the parent object. Edges show the direction, type, and strength of the relationship between two Salesforce objects.
+            </div>
+          </div>
+          {REL_DESCRIPTIONS.map(r => (
+            <div key={r.type} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                <svg width="28" height="10" style={{ flexShrink: 0 }}>
+                  <line x1="0" y1="5" x2="28" y2="5"
+                    stroke={r.color}
+                    strokeWidth={r.type === 'masterDetail' ? 3 : r.type === 'lookup' ? 1.5 : 1}
+                    strokeDasharray={r.dash || ''}
+                  />
+                </svg>
+                <strong style={{ color: '#0f172a' }}>{r.label}</strong>
+              </div>
+              <div style={{ color: '#475569', lineHeight: 1.5, marginBottom: 4 }}>{r.desc}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>Example: <em>{r.example}</em></div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode, onNodeClick, onFocusNode }) {
-  const { fitView, getViewport } = useReactFlow();
+  const { getNodes } = useReactFlow();
   const [edgeTooltip, setEdgeTooltip] = useState(null);
 
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
@@ -33,10 +120,7 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
   const styledNodes = useMemo(() =>
     rawNodes.map(n => ({
       ...n,
-      data: {
-        ...n.data,
-        onFocus: onFocusNode,
-      },
+      data: { ...n.data, onFocus: onFocusNode },
       style: searchTerm && n.data.name.toLowerCase().includes(searchTerm.toLowerCase())
         ? { outline: '3px solid #f59e0b', borderRadius: 8 }
         : {},
@@ -67,11 +151,27 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
 
   const exportPng = useCallback(async () => {
     const { toPng } = await import('@xyflow/react');
-    const dataUrl = await toPng(document.querySelector('.react-flow__viewport'));
+    const dataUrl = await toPng(document.querySelector('.react-flow__viewport'), { backgroundColor: '#fff' });
     const a = document.createElement('a');
     a.href = dataUrl;
     a.download = 'org-model.png';
     a.click();
+  }, []);
+
+  const exportPdf = useCallback(async () => {
+    const { toPng } = await import('@xyflow/react');
+    const dataUrl = await toPng(document.querySelector('.react-flow__viewport'), { backgroundColor: '#fff' });
+    const { jsPDF } = await import('jspdf');
+    const img = new Image();
+    img.onload = () => {
+      const pxToMm = px => px * 0.264583;
+      const w = pxToMm(img.width);
+      const h = pxToMm(img.height);
+      const pdf = new jsPDF({ orientation: w > h ? 'landscape' : 'portrait', unit: 'mm', format: [w, h] });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, w, h);
+      pdf.save('org-model.pdf');
+    };
+    img.src = dataUrl;
   }, []);
 
   return (
@@ -93,16 +193,20 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
         <Background color="#e2e8f0" gap={20} />
       </ReactFlow>
 
-      <button
-        onClick={exportPng}
-        style={{
-          position: 'absolute', bottom: 16, right: 16,
-          padding: '8px 16px', background: '#1e293b', color: '#fff',
-          border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', zIndex: 10,
-        }}
-      >
-        Export PNG
-      </button>
+      <div style={{ position: 'absolute', bottom: 16, right: 16, display: 'flex', gap: 8, zIndex: 10 }}>
+        <button
+          onClick={exportPdf}
+          style={{ padding: '8px 16px', background: '#0070D2', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+        >
+          Save as PDF
+        </button>
+        <button
+          onClick={exportPng}
+          style={{ padding: '8px 16px', background: '#1e293b', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+        >
+          Export PNG
+        </button>
+      </div>
 
       {edgeTooltip && (
         <div style={{
@@ -119,24 +223,7 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
         </div>
       )}
 
-      <div style={{
-        position: 'absolute', top: 12, right: 12,
-        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
-        padding: '8px 12px', fontSize: 11, zIndex: 10, lineHeight: 2,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ display: 'inline-block', width: 24, height: 3, background: '#ef4444', borderRadius: 2 }} />
-          Master-Detail
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ display: 'inline-block', width: 24, height: 2, background: '#3b82f6', borderRadius: 2, borderTop: '2px dashed #3b82f6' }} />
-          Lookup
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ display: 'inline-block', width: 24, height: 1, background: '#9ca3af', borderTop: '1px dotted #9ca3af' }} />
-          Hierarchical
-        </div>
-      </div>
+      <RelationshipLegend />
     </div>
   );
 }

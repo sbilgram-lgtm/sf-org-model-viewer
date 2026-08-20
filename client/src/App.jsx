@@ -13,8 +13,111 @@ const FEATURES = [
   { icon: '🏷️', name: 'Cloud / License Detection', desc: 'Badges for Platform, Sales, Service, Field Service, 30+ Industries clouds' },
   { icon: '🔍', name: 'Click-to-Explore', desc: 'Click any object to see every field, type, and badge in a side panel' },
   { icon: '🎯', name: 'Focus Mode', desc: 'Isolate any object and its direct relationships instantly' },
-  { icon: '📸', name: 'PNG Export', desc: 'Save the current diagram view as an image' },
+  { icon: '📄', name: 'PDF & PNG Export', desc: 'Save the current diagram view as a PDF or image file' },
 ];
+
+const DEMO_FIELDS = [
+  { name: 'Id',            label: 'Record ID',      type: 'id',        required: true },
+  { name: 'Name',          label: 'Account Name',   type: 'string',    required: true },
+  { name: 'Type',          label: 'Account Type',   type: 'picklist',  required: false },
+  { name: 'Industry',      label: 'Industry',       type: 'picklist',  required: false },
+  { name: 'AnnualRevenue', label: 'Annual Revenue', type: 'currency',  required: false },
+  { name: 'Phone',         label: 'Phone',          type: 'phone',     required: false },
+  { name: 'Website',       label: 'Website',        type: 'url',       required: false },
+  { name: 'OwnerId',       label: 'Owner ID',       type: 'reference', required: true,  referenceTo: ['User'],    relationshipName: 'Owner' },
+  { name: 'ParentId',      label: 'Parent Account', type: 'reference', required: false, referenceTo: ['Account'], relationshipName: 'Parent', cascadeDelete: false },
+];
+
+function DemoModal({ onClose }) {
+  const [fieldSearch, setFieldSearch] = useState('');
+  const [expandedField, setExpandedField] = useState(null);
+
+  const BADGE = {
+    required:  { bg: '#fee2e2', text: '#b91c1c', label: 'Required' },
+    reference: { bg: '#dbeafe', text: '#1d4ed8', label: 'Reference' },
+  };
+
+  const filtered = DEMO_FIELDS.filter(f =>
+    !fieldSearch || f.name.toLowerCase().includes(fieldSearch.toLowerCase()) || f.label.toLowerCase().includes(fieldSearch.toLowerCase())
+  );
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
+      <div onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 12, width: '100%', maxWidth: 560, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+
+        {/* Object header — same as real SidePanel */}
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'linear-gradient(135deg, #032D60 0%, #0070D2 100%)', color: 'white' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Account</div>
+            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>API Name: Account</div>
+            <span style={{ marginTop: 6, display: 'inline-block', fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.2)' }}>
+              Platform
+            </span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, opacity: 0.7 }}>Example — what you see when you</div>
+            <div style={{ fontSize: 11, opacity: 0.7 }}>click any object node in the diagram</div>
+            <button onClick={onClose} style={{ marginTop: 6, background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 26, height: 26, fontSize: 16, cursor: 'pointer', color: 'white', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+          </div>
+        </div>
+
+        {/* Field filter */}
+        <div style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9' }}>
+          <input
+            style={{ width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+            placeholder="Filter fields…"
+            value={fieldSearch}
+            onChange={e => setFieldSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Field list */}
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['API Name', 'Label', 'Type', 'Attributes'].map(h => (
+                  <th key={h} style={{ padding: '6px 10px', fontSize: 11, fontWeight: 600, color: '#64748b', textAlign: 'left', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(f => (
+                <React.Fragment key={f.name}>
+                  <tr
+                    onClick={() => f.referenceTo && setExpandedField(expandedField === f.name ? null : f.name)}
+                    style={{ cursor: f.referenceTo ? 'pointer' : 'default', background: expandedField === f.name ? '#f1f5f9' : 'transparent' }}
+                  >
+                    <td style={{ padding: '6px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>{f.name}</td>
+                    <td style={{ padding: '6px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>{f.label}</td>
+                    <td style={{ padding: '6px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9', verticalAlign: 'top', color: '#64748b' }}>{f.type}</td>
+                    <td style={{ padding: '6px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>
+                      {f.required && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 999, background: BADGE.required.bg, color: BADGE.required.text, marginRight: 4 }}>Required</span>}
+                      {f.referenceTo && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 999, background: BADGE.reference.bg, color: BADGE.reference.text }}>Reference</span>}
+                    </td>
+                  </tr>
+                  {expandedField === f.name && f.referenceTo && (
+                    <tr style={{ background: '#f8fafc' }}>
+                      <td colSpan={4} style={{ padding: '6px 12px', fontSize: 11, color: '#475569' }}>
+                        <strong>References:</strong> {f.referenceTo.join(', ')} &nbsp;·&nbsp;
+                        <strong>Rel name:</strong> {f.relationshipName} &nbsp;·&nbsp;
+                        <strong>Cascade delete:</strong> {f.cascadeDelete ? 'Yes' : 'No'}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ padding: '10px 16px', borderTop: '1px solid #e2e8f0', fontSize: 11, color: '#94a3b8', background: '#f8fafc' }}>
+          Click a Reference field row to expand its relationship details · In the real app, all {'{'}N{'}'} fields from your org appear here
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const inputStyle = {
   width: '100%',
@@ -53,6 +156,7 @@ export default function App() {
   const [remember, setRemember] = useState(true);
   const [loginError, setLoginError] = useState('');
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
 
   const { schema, loading, error } = useSchema(auth?.authenticated ? auth : null);
 
@@ -282,10 +386,16 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ margin: 0, fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
             Read-only OAuth access · No data stored · Credentials saved locally only
           </p>
+          <button
+            onClick={() => setShowDemo(true)}
+            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', padding: '4px 12px', borderRadius: 5, fontSize: '0.72rem', cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 12 }}
+          >
+            See example →
+          </button>
         </div>
       </div>
 
@@ -391,6 +501,8 @@ export default function App() {
           </p>
         </div>
       </div>
+
+      {showDemo && <DemoModal onClose={() => setShowDemo(false)} />}
 
       {/* SETUP GUIDE MODAL */}
       {showSetupGuide && (
