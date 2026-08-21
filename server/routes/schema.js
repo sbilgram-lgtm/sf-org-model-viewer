@@ -62,6 +62,7 @@ router.get('/schema', requireAuth, async (req, res) => {
       custom: obj.custom,
       keyPrefix: obj.keyPrefix,
       cloudBadge: getCloudBadge(obj.name, obj.custom),
+      recordTypeCount: (obj.recordTypeInfos || []).filter(rt => !rt.master).length,
       fields: obj.fields.map(f => ({
         name: f.name,
         label: f.label,
@@ -93,6 +94,26 @@ router.get('/schema', requireAuth, async (req, res) => {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
+});
+
+router.get('/object-info/:name', requireAuth, async (req, res) => {
+  const name = req.params.name;
+  if (!/^[a-zA-Z0-9_]+$/.test(name)) {
+    return res.status(400).json({ error: 'Invalid object name' });
+  }
+  const conn = getConn(req);
+  const result = { triggers: [], validationRules: [] };
+
+  await Promise.all([
+    conn.tooling.query(`SELECT Id, Name, Status FROM ApexTrigger WHERE TableEnumOrId = '${name}'`)
+      .then(r => { result.triggers = r.records || []; })
+      .catch(() => {}),
+    conn.tooling.query(`SELECT Id, FullName, Active FROM ValidationRule WHERE EntityDefinition.QualifiedApiName = '${name}'`)
+      .then(r => { result.validationRules = r.records || []; })
+      .catch(() => {}),
+  ]);
+
+  res.json(result);
 });
 
 module.exports = router;
