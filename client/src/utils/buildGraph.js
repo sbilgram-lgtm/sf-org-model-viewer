@@ -67,6 +67,7 @@ export function buildGraph(schema, selectedObjectNames, focusedNode) {
 
       edges.push({
         id: edgeId,
+        type: 'relationship',
         source: obj.name,
         target,
         data: {

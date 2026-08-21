@@ -11,9 +11,11 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import ObjectNode from './ObjectNode';
+import RelationshipEdge from './RelationshipEdge';
 import { buildGraph } from '../utils/buildGraph';
 
 const nodeTypes = { objectNode: ObjectNode };
+const edgeTypes = { relationship: RelationshipEdge };
 
 const EDGE_STYLES = {
   masterDetail:  { stroke: '#ef4444', strokeWidth: 3 },
@@ -27,7 +29,8 @@ const REL_DESCRIPTIONS = [
     color: '#ef4444',
     dash: null,
     label: 'Master-Detail',
-    desc: 'The child record is tightly owned by the parent. Deleting the parent automatically deletes all children (cascade delete). The lookup field on the child is required — the child cannot exist without a parent. Ownership and sharing are controlled by the parent.',
+    cardinality: '1 (parent) to many (children)',
+    desc: 'The child is tightly owned by the parent. Cascade delete: deleting the parent removes all children. The child\'s lookup field is required — a child cannot exist without a parent. Ownership and sharing are inherited from the parent.',
     example: 'OpportunityLineItem → Opportunity',
   },
   {
@@ -35,7 +38,8 @@ const REL_DESCRIPTIONS = [
     color: '#3b82f6',
     dash: '5 3',
     label: 'Lookup',
-    desc: 'A loosely coupled relationship. The child can exist independently of the parent. Deleting the parent does not delete the child by default (the lookup field is cleared or restricted). The field is typically optional.',
+    cardinality: '0..1 (parent) to 0..many (children)',
+    desc: 'A loosely coupled, optional relationship. The child can exist without a parent. Deleting the parent does not delete the child — the lookup field is cleared or restricted. The circle (○) on each end indicates the relationship is optional.',
     example: 'Contact → Account',
   },
   {
@@ -43,8 +47,9 @@ const REL_DESCRIPTIONS = [
     color: '#9ca3af',
     dash: '2 2',
     label: 'Hierarchical',
-    desc: 'A special self-referencing lookup where a record of an object relates to another record of the same object, creating a parent-child hierarchy within a single object. In Salesforce this is only available as a standard field type on the User object (the Manager field).',
-    example: 'User → User (Manager)',
+    cardinality: '0..1 (parent) to 0..many (children)',
+    desc: 'A self-referencing relationship — a record of an object points to another record of the same object. Used for tree-style hierarchies within a single object type.',
+    example: 'User → User (Manager), Account → Account (Parent)',
   },
 ];
 
@@ -81,14 +86,17 @@ function RelationshipLegend() {
             <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
           </div>
           <div style={{ marginBottom: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-            <div style={{ fontWeight: 600, color: '#334155', marginBottom: 3 }}>What is a Relationship Edge?</div>
-            <div style={{ color: '#64748b', lineHeight: 1.5 }}>
-              The lines connecting two object nodes in the diagram. Each edge represents a field on the child object that references (points to) the parent object. Edges show the direction, type, and strength of the relationship between two Salesforce objects.
+            <div style={{ fontWeight: 600, color: '#334155', marginBottom: 4 }}>Crow's Foot Notation</div>
+            <div style={{ color: '#64748b', lineHeight: 1.8, fontSize: 11 }}>
+              <div><strong style={{ color: '#334155' }}>‹ (three lines)</strong> = Many — multiple records allowed</div>
+              <div><strong style={{ color: '#334155' }}>‹○ (three lines + circle)</strong> = Zero-or-Many — optional, multiple allowed</div>
+              <div><strong style={{ color: '#334155' }}>|| (double bar)</strong> = Exactly One — required, one record only</div>
+              <div><strong style={{ color: '#334155' }}>|○ (bar + circle)</strong> = Zero-or-One — optional, at most one</div>
             </div>
           </div>
           {REL_DESCRIPTIONS.map(r => (
             <div key={r.type} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <svg width="28" height="10" style={{ flexShrink: 0 }}>
                   <line x1="0" y1="5" x2="28" y2="5"
                     stroke={r.color}
@@ -98,6 +106,7 @@ function RelationshipLegend() {
                 </svg>
                 <strong style={{ color: '#0f172a' }}>{r.label}</strong>
               </div>
+              <div style={{ fontSize: 10, color: r.color, fontWeight: 600, marginBottom: 4 }}>{r.cardinality}</div>
               <div style={{ color: '#475569', lineHeight: 1.5, marginBottom: 4 }}>{r.desc}</div>
               <div style={{ fontSize: 11, color: '#94a3b8' }}>Example: <em>{r.example}</em></div>
             </div>
@@ -196,11 +205,12 @@ function DiagramInner({ schema, selectedObjects, showEdgeLabels, focusedNode, on
   return (
     <div style={{ flex: 1, position: 'relative' }}>
       <ReactFlow
-        nodes={styledNodes}
-        edges={styledEdges}
+        nodes={nodes}
+        edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodeClick={(_, node) => onNodeClick(node)}
         onEdgeClick={handleEdgeClick}
         onPaneClick={() => setEdgeTooltip(null)}
