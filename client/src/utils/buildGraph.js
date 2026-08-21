@@ -13,11 +13,13 @@ export function buildGraph(schema, filter, focusedNode, searchTerm, page = 0) {
   // When searching, keep only matching objects + their direct neighbors
   if (searchTerm && searchTerm.trim()) {
     const term = searchTerm.trim().toLowerCase();
-    const matchingNames = new Set(
-      objects.filter(o =>
-        o.name.toLowerCase().includes(term) || o.label.toLowerCase().includes(term)
-      ).map(o => o.name)
-    );
+
+    const exact    = objects.filter(o => o.name.toLowerCase() === term || o.label.toLowerCase() === term);
+    const startsWith = objects.filter(o => !exact.includes(o) && (o.name.toLowerCase().startsWith(term) || o.label.toLowerCase().startsWith(term)));
+    const contains   = objects.filter(o => !exact.includes(o) && !startsWith.includes(o) && (o.name.toLowerCase().includes(term) || o.label.toLowerCase().includes(term)));
+
+    const matched = exact.length > 0 ? exact : startsWith.length > 0 ? startsWith : contains;
+    const matchingNames = new Set(matched.map(o => o.name));
 
     if (matchingNames.size > 0) {
       const neighbors = new Set(matchingNames);
