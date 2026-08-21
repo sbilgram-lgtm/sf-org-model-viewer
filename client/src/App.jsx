@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import FilterBar from './components/FilterBar';
+import ObjectSelectorPanel from './components/ObjectSelectorPanel';
 import Diagram from './components/Diagram';
 import SidePanel from './components/SidePanel';
 import useSchema from './hooks/useSchema';
@@ -143,15 +143,26 @@ const labelStyle = {
 
 export default function App() {
   const [auth, setAuth] = useState(null);
-  const [filter, setFilter] = useState('platform');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedObjects, setSelectedObjects] = useState(new Set());
   const [showEdgeLabels, setShowEdgeLabels] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [focusedNode, setFocusedNode] = useState(null);
-  const [page, setPage] = useState(0);
 
-  const handleFilterChange = (f) => { setFilter(f); setPage(0); };
-  const handleSearchChange = (e) => { setSearchTerm(e.target.value); setPage(0); };
+  const handleToggle = (name) => {
+    setSelectedObjects(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  };
+  const handleSelectAll = (objects) => {
+    setSelectedObjects(prev => {
+      const next = new Set(prev);
+      objects.forEach(o => next.add(o.name));
+      return next;
+    });
+  };
+  const handleClearAll = () => setSelectedObjects(new Set());
 
   // Login form state
   const [loginUrl, setLoginUrl] = useState('');
@@ -251,66 +262,64 @@ export default function App() {
           </div>
         </header>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, flexWrap: 'wrap' }}>
-          <FilterBar value={filter} onChange={handleFilterChange} schema={schema} />
-          <input
-            style={{ padding: '6px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, width: 220, outline: 'none' }}
-            placeholder="Search objects..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', cursor: 'pointer' }}>
-            <input type="checkbox" checked={showEdgeLabels} onChange={e => setShowEdgeLabels(e.target.checked)} />
-            Show relationship labels
-          </label>
-          {focusedNode && (
-            <button
-              style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}
-              onClick={() => setFocusedNode(null)}
-            >
-              Clear focus: {focusedNode}
-            </button>
-          )}
-          {loading && (
-            <span style={{ fontSize: 12, color: '#64748b', marginLeft: 'auto' }}>
-              Loading org schema — may take up to a minute for large orgs…
-            </span>
-          )}
-        </div>
-
-        {loading && (
-          <div style={{ height: 3, background: '#e2e8f0', flexShrink: 0 }}>
-            <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, #0070D2, #1589EE)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-          </div>
-        )}
-
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {loading && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#64748b', fontSize: 14 }}>
-              Loading org schema…
+          <ObjectSelectorPanel
+            schema={schema}
+            loading={loading}
+            selectedObjects={selectedObjects}
+            onToggle={handleToggle}
+            onSelectAll={handleSelectAll}
+            onClearAll={handleClearAll}
+          />
+
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: 16, alignItems: 'center', background: '#fff', flexShrink: 0, flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', cursor: 'pointer' }}>
+                <input type="checkbox" checked={showEdgeLabels} onChange={e => setShowEdgeLabels(e.target.checked)} />
+                Show relationship labels
+              </label>
+              {focusedNode && (
+                <button
+                  style={{ padding: '4px 10px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 5, fontSize: 12, cursor: 'pointer' }}
+                  onClick={() => setFocusedNode(null)}
+                >
+                  Clear focus: {focusedNode}
+                </button>
+              )}
+              {loading && (
+                <span style={{ fontSize: 12, color: '#64748b', marginLeft: 'auto' }}>
+                  Loading org schema — may take up to a minute for large orgs…
+                </span>
+              )}
             </div>
-          )}
-          {error && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#c0392b', fontSize: 14 }}>
-              Error loading schema: {error}
+
+            {loading && (
+              <div style={{ height: 3, background: '#e2e8f0', flexShrink: 0 }}>
+                <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, #0070D2, #1589EE)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              {error && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#c0392b', fontSize: 14 }}>
+                  Error loading schema: {error}
+                </div>
+              )}
+              {!error && (
+                <Diagram
+                  schema={schema || []}
+                  selectedObjects={selectedObjects}
+                  showEdgeLabels={showEdgeLabels}
+                  focusedNode={focusedNode}
+                  onNodeClick={node => setSelectedNode(node.data)}
+                  onFocusNode={name => setFocusedNode(name)}
+                />
+              )}
+              {selectedNode && (
+                <SidePanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+              )}
             </div>
-          )}
-          {!loading && !error && schema && (
-            <Diagram
-              schema={schema}
-              filter={filter}
-              searchTerm={searchTerm}
-              showEdgeLabels={showEdgeLabels}
-              focusedNode={focusedNode}
-              onNodeClick={node => setSelectedNode(node.data)}
-              onFocusNode={name => { setFocusedNode(name); setPage(0); }}
-              page={page}
-              onPageChange={setPage}
-            />
-          )}
-          {selectedNode && (
-            <SidePanel node={selectedNode} onClose={() => setSelectedNode(null)} />
-          )}
+          </div>
         </div>
       </div>
     );

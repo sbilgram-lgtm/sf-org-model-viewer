@@ -108,23 +108,20 @@ function RelationshipLegend() {
   );
 }
 
-function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode, onNodeClick, onFocusNode, page, onPageChange }) {
+function DiagramInner({ schema, selectedObjects, showEdgeLabels, focusedNode, onNodeClick, onFocusNode }) {
   const [edgeTooltip, setEdgeTooltip] = useState(null);
 
-  const { nodes: rawNodes, edges: rawEdges, totalObjects, totalPages, currentPage } = useMemo(
-    () => buildGraph(schema, filter, focusedNode, searchTerm, page),
-    [schema, filter, focusedNode, searchTerm, page]
+  const { nodes: rawNodes, edges: rawEdges } = useMemo(
+    () => buildGraph(schema, selectedObjects, focusedNode),
+    [schema, selectedObjects, focusedNode]
   );
 
   const styledNodes = useMemo(() =>
     rawNodes.map(n => ({
       ...n,
       data: { ...n.data, onFocus: onFocusNode },
-      style: searchTerm && (n.data.name.toLowerCase().includes(searchTerm.toLowerCase()) || n.data.label.toLowerCase().includes(searchTerm.toLowerCase()))
-        ? { outline: '3px solid #f59e0b', borderRadius: 8 }
-        : {},
     })),
-    [rawNodes, searchTerm, onFocusNode]
+    [rawNodes, onFocusNode]
   );
 
   const styledEdges = useMemo(() =>
@@ -180,18 +177,17 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
   }, []);
 
   if (rawNodes.length === 0) {
-    const messages = {
-      platform: 'No Platform objects found. Try switching to Standard or All.',
-      custom: 'No custom objects found in this org. Create custom objects in Salesforce Setup, then reconnect.',
-      standard: 'No standard objects found.',
-      all: searchTerm ? `No objects match "${searchTerm}". Try a different search term.` : 'No objects to display.',
-    };
+    const noSelection = !selectedObjects || selectedObjects.size === 0;
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b', gap: 12 }}>
-        <div style={{ fontSize: 40 }}>🔍</div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#334155' }}>No objects to display</div>
-        <div style={{ fontSize: 13, maxWidth: 360, textAlign: 'center', lineHeight: 1.5 }}>
-          {searchTerm ? `No objects match "${searchTerm}". Try a different search term.` : messages[filter] || messages.all}
+        <div style={{ fontSize: 40 }}>{noSelection ? '🗂️' : '🔍'}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#334155' }}>
+          {noSelection ? 'No objects selected' : 'No objects to display'}
+        </div>
+        <div style={{ fontSize: 13, maxWidth: 380, textAlign: 'center', lineHeight: 1.6 }}>
+          {noSelection
+            ? 'Select one or more objects from the panel on the left to build your diagram. Use Quick Find to search, or Select All to load everything.'
+            : 'The selected objects have no visible relationships in the current view.'}
         </div>
       </div>
     );
@@ -215,24 +211,6 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
         <MiniMap nodeColor={n => n.data?.custom ? '#fed7aa' : '#dbeafe'} />
         <Background color="#e2e8f0" gap={20} />
       </ReactFlow>
-
-      {totalPages > 1 && (
-        <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 14px', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', fontSize: 13 }}>
-          <button
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 0}
-            style={{ background: 'none', border: 'none', cursor: currentPage === 0 ? 'default' : 'pointer', color: currentPage === 0 ? '#cbd5e1' : '#334155', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
-          >←</button>
-          <span style={{ color: '#64748b' }}>
-            <strong style={{ color: '#0f172a' }}>{currentPage * 10 + 1}–{Math.min((currentPage + 1) * 10, totalObjects)}</strong> of <strong style={{ color: '#0f172a' }}>{totalObjects}</strong> objects
-          </span>
-          <button
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages - 1}
-            style={{ background: 'none', border: 'none', cursor: currentPage >= totalPages - 1 ? 'default' : 'pointer', color: currentPage >= totalPages - 1 ? '#cbd5e1' : '#334155', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
-          >→</button>
-        </div>
-      )}
 
       <div style={{ position: 'absolute', bottom: 16, right: 16, display: 'flex', gap: 8, zIndex: 10 }}>
         <button
@@ -269,10 +247,17 @@ function DiagramInner({ schema, filter, searchTerm, showEdgeLabels, focusedNode,
   );
 }
 
-export default function Diagram(props) {
+export default function Diagram({ schema, selectedObjects, showEdgeLabels, focusedNode, onNodeClick, onFocusNode }) {
   return (
     <ReactFlowProvider>
-      <DiagramInner {...props} />
+      <DiagramInner
+        schema={schema}
+        selectedObjects={selectedObjects}
+        showEdgeLabels={showEdgeLabels}
+        focusedNode={focusedNode}
+        onNodeClick={onNodeClick}
+        onFocusNode={onFocusNode}
+      />
     </ReactFlowProvider>
   );
 }
