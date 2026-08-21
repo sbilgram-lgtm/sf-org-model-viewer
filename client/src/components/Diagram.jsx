@@ -53,6 +53,50 @@ const REL_DESCRIPTIONS = [
   },
 ];
 
+// Draws one endpoint symbol + a short line stub — used in both collapsed and expanded legend
+function EndpointSvg({ type, color, dash }) {
+  const da = dash || '';
+  if (type === 'many') return (
+    <svg width="38" height="20" style={{ flexShrink: 0 }}>
+      <line x1="2"  y1="10" x2="14" y2="10" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <line x1="2"  y1="10" x2="14" y2="4"  stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <line x1="2"  y1="10" x2="14" y2="16" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <line x1="14" y1="10" x2="38" y2="10" stroke={color} strokeWidth={1.5} strokeDasharray={da} />
+    </svg>
+  );
+  if (type === 'many-optional') return (
+    <svg width="46" height="20" style={{ flexShrink: 0 }}>
+      <line x1="2"  y1="10" x2="14" y2="10" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <line x1="2"  y1="10" x2="14" y2="4"  stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <line x1="2"  y1="10" x2="14" y2="16" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <circle cx="19" cy="10" r="4" fill="white" stroke={color} strokeWidth={1.5} />
+      <line x1="24" y1="10" x2="46" y2="10" stroke={color} strokeWidth={1.5} strokeDasharray={da} />
+    </svg>
+  );
+  if (type === 'one') return (
+    <svg width="38" height="20" style={{ flexShrink: 0 }}>
+      <line x1="2" y1="4" x2="2" y2="16" stroke={color} strokeWidth={1.5} />
+      <line x1="7" y1="4" x2="7" y2="16" stroke={color} strokeWidth={1.5} />
+      <line x1="7" y1="10" x2="38" y2="10" stroke={color} strokeWidth={1.5} strokeDasharray={da} />
+    </svg>
+  );
+  if (type === 'one-optional') return (
+    <svg width="46" height="20" style={{ flexShrink: 0 }}>
+      <line x1="2"  y1="4" x2="2"  y2="16" stroke={color} strokeWidth={1.5} />
+      <circle cx="11" cy="10" r="4" fill="white" stroke={color} strokeWidth={1.5} />
+      <line x1="16" y1="10" x2="46" y2="10" stroke={color} strokeWidth={1.5} strokeDasharray={da} />
+    </svg>
+  );
+  return null;
+}
+
+const ENDPOINT_LEGEND = [
+  { type: 'many',          color: '#ef4444', dash: '',    label: 'Many (required)' },
+  { type: 'one',           color: '#ef4444', dash: '',    label: 'Exactly One' },
+  { type: 'many-optional', color: '#3b82f6', dash: '5 3', label: 'Zero or Many' },
+  { type: 'one-optional',  color: '#3b82f6', dash: '5 3', label: 'Zero or One' },
+];
+
 function RelationshipLegend() {
   const [open, setOpen] = useState(false);
 
@@ -61,10 +105,11 @@ function RelationshipLegend() {
       {!open ? (
         <div
           onClick={() => setOpen(true)}
-          style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px', fontSize: 11, cursor: 'pointer', lineHeight: 2, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+          style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px', fontSize: 11, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', minWidth: 160 }}
         >
+          {/* Relationship line styles */}
           {REL_DESCRIPTIONS.map(r => (
-            <div key={r.type} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div key={r.type} style={{ display: 'flex', alignItems: 'center', gap: 8, lineHeight: 2 }}>
               <svg width="24" height="10">
                 <line x1="0" y1="5" x2="24" y2="5"
                   stroke={r.color}
@@ -75,24 +120,43 @@ function RelationshipLegend() {
               <span style={{ color: '#334155' }}>{r.label}</span>
             </div>
           ))}
-          <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 4, paddingTop: 4, color: '#94a3b8', fontSize: 10, textAlign: 'center' }}>
+          {/* Endpoint symbol mini-grid */}
+          <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 5, paddingTop: 6, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 8px' }}>
+            {ENDPOINT_LEGEND.map(e => (
+              <div key={e.type} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <EndpointSvg type={e.type} color={e.color} dash={e.dash} />
+                <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap' }}>{e.label}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop: '1px solid #f1f5f9', marginTop: 5, paddingTop: 4, color: '#94a3b8', fontSize: 10, textAlign: 'center' }}>
             Click for descriptions
           </div>
         </div>
       ) : (
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px', fontSize: 12, width: 320, boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px', fontSize: 12, width: 340, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: '80vh', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <strong style={{ fontSize: 13, color: '#0f172a' }}>Relationship Types</strong>
             <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
           </div>
-          <div style={{ marginBottom: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-            <div style={{ fontWeight: 600, color: '#334155', marginBottom: 4 }}>Crow's Foot Notation</div>
-            <div style={{ color: '#64748b', lineHeight: 1.8, fontSize: 11 }}>
-              <div><strong style={{ color: '#334155' }}>‹ (three lines)</strong> = Many — multiple records allowed</div>
-              <div><strong style={{ color: '#334155' }}>‹○ (three lines + circle)</strong> = Zero-or-Many — optional, multiple allowed</div>
-              <div><strong style={{ color: '#334155' }}>|| (double bar)</strong> = Exactly One — required, one record only</div>
-              <div><strong style={{ color: '#334155' }}>|○ (bar + circle)</strong> = Zero-or-One — optional, at most one</div>
-            </div>
+
+          {/* Visual endpoint symbol key */}
+          <div style={{ marginBottom: 12, padding: '10px 12px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+            <div style={{ fontWeight: 600, color: '#334155', marginBottom: 8, fontSize: 12 }}>Endpoint (Crow's Foot) Notation</div>
+            {ENDPOINT_LEGEND.map(e => (
+              <div key={e.type} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <EndpointSvg type={e.type} color={e.color} dash={e.dash} />
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#334155' }}>{e.label}</div>
+                  <div style={{ fontSize: 10, color: '#64748b' }}>
+                    {e.type === 'many'          && 'Required — one parent must exist, parent can have many children'}
+                    {e.type === 'one'           && 'Required — the child must have exactly one parent'}
+                    {e.type === 'many-optional' && 'Optional — parent may have zero or many children'}
+                    {e.type === 'one-optional'  && 'Optional — the child may reference zero or one parent'}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
           {REL_DESCRIPTIONS.map(r => (
             <div key={r.type} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
