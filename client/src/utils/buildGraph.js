@@ -10,35 +10,26 @@ export function buildGraph(schema, filter, focusedNode, searchTerm, page = 0) {
   else if (filter === 'standard') objects = schema.filter(o => !o.custom);
   else if (filter === 'custom') objects = schema.filter(o => o.custom);
 
-  // When searching, keep only matching objects + their direct neighbors
+  // When searching, find the single best match then show it + its direct relationships
   if (searchTerm && searchTerm.trim()) {
     const term = searchTerm.trim().toLowerCase();
 
-    const exact    = objects.filter(o => o.name.toLowerCase() === term || o.label.toLowerCase() === term);
-    const startsWith = objects.filter(o => !exact.includes(o) && (o.name.toLowerCase().startsWith(term) || o.label.toLowerCase().startsWith(term)));
-    const contains   = objects.filter(o => !exact.includes(o) && !startsWith.includes(o) && (o.name.toLowerCase().includes(term) || o.label.toLowerCase().includes(term)));
+    const topMatch =
+      objects.find(o => o.name.toLowerCase() === term || o.label.toLowerCase() === term) ||
+      objects.find(o => o.name.toLowerCase().startsWith(term) || o.label.toLowerCase().startsWith(term)) ||
+      objects.find(o => o.name.toLowerCase().includes(term) || o.label.toLowerCase().includes(term));
 
-    const matched = exact.length > 0 ? exact : startsWith.length > 0 ? startsWith : contains;
-    const matchingNames = new Set(matched.map(o => o.name));
-
-    if (matchingNames.size > 0) {
-      const neighbors = new Set(matchingNames);
-      for (const obj of objects) {
-        if (!matchingNames.has(obj.name)) continue;
-        for (const f of obj.fields) {
-          if (f.referenceTo && f.referenceTo.length > 0) neighbors.add(f.referenceTo[0]);
-        }
-        for (const r of obj.childRelationships) {
-          neighbors.add(r.childSObject);
-        }
+    if (topMatch) {
+      const neighbors = new Set([topMatch.name]);
+      for (const f of topMatch.fields) {
+        if (f.referenceTo && f.referenceTo.length > 0) neighbors.add(f.referenceTo[0]);
       }
-      for (const obj of schema) {
-        if (matchingNames.has(obj.name)) continue;
-        for (const f of obj.fields) {
-          if (f.referenceTo && f.referenceTo.includes(obj.name)) neighbors.add(obj.name);
-        }
+      for (const r of topMatch.childRelationships) {
+        neighbors.add(r.childSObject);
       }
       objects = objects.filter(o => neighbors.has(o.name));
+    } else {
+      objects = [];
     }
   }
 
