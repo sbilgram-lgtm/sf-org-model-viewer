@@ -1,32 +1,54 @@
 import React, { useState, useMemo } from 'react';
 
-const FILTER_OPTIONS = [
+const STATIC_OPTIONS = [
   { value: 'all',      label: 'All Objects' },
   { value: 'platform', label: 'Platform Only' },
   { value: 'standard', label: 'Standard Objects' },
   { value: 'custom',   label: 'Custom Objects' },
 ];
 
+// cloudBadge values that already have a dedicated static option or aren't meaningful as a cloud filter
+const SKIP_BADGES = new Set(['Platform', 'Custom (Org)']);
+
 export default function ObjectSelectorPanel({ schema, loading, selectedObjects, onToggle, onSelectAll, onClearAll }) {
   const [filterType, setFilterType] = useState('all');
   const [search, setSearch] = useState('');
 
+  // Distinct cloud badges present in this org, sorted — drives the dynamic optgroup
+  const cloudBadges = useMemo(() => {
+    if (!schema) return [];
+    const seen = new Set();
+    for (const o of schema) {
+      if (o.cloudBadge && !SKIP_BADGES.has(o.cloudBadge)) seen.add(o.cloudBadge);
+    }
+    return [...seen].sort();
+  }, [schema]);
+
   const counts = useMemo(() => {
     if (!schema) return {};
-    return {
+    const c = {
       all:      schema.length,
       platform: schema.filter(o => !o.custom && o.cloudBadge === 'Platform').length,
       standard: schema.filter(o => !o.custom).length,
       custom:   schema.filter(o => o.custom).length,
     };
+    // Count per cloud badge for the dynamic options
+    for (const o of schema) {
+      if (o.cloudBadge && !SKIP_BADGES.has(o.cloudBadge)) {
+        c[o.cloudBadge] = (c[o.cloudBadge] || 0) + 1;
+      }
+    }
+    return c;
   }, [schema]);
 
   const filtered = useMemo(() => {
     if (!schema) return [];
-    let items = schema;
-    if (filterType === 'platform') items = schema.filter(o => !o.custom && o.cloudBadge === 'Platform');
+    let items;
+    if (filterType === 'platform')      items = schema.filter(o => !o.custom && o.cloudBadge === 'Platform');
     else if (filterType === 'standard') items = schema.filter(o => !o.custom);
-    else if (filterType === 'custom') items = schema.filter(o => o.custom);
+    else if (filterType === 'custom')   items = schema.filter(o => o.custom);
+    else if (filterType === 'all')      items = schema;
+    else                                items = schema.filter(o => o.cloudBadge === filterType); // cloud badge
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       items = items.filter(o => o.name.toLowerCase().includes(q) || o.label.toLowerCase().includes(q));
@@ -44,11 +66,22 @@ export default function ObjectSelectorPanel({ schema, loading, selectedObjects, 
           onChange={e => setFilterType(e.target.value)}
           style={{ width: '100%', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 5, fontSize: 12, color: '#334155', background: '#fff', marginBottom: 8 }}
         >
-          {FILTER_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>
-              {o.label}{schema ? ` (${counts[o.value]})` : ''}
-            </option>
-          ))}
+          <optgroup label="Object Type">
+            {STATIC_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>
+                {o.label}{schema ? ` (${counts[o.value]})` : ''}
+              </option>
+            ))}
+          </optgroup>
+          {cloudBadges.length > 0 && (
+            <optgroup label="Industry / Product Clouds">
+              {cloudBadges.map(badge => (
+                <option key={badge} value={badge}>
+                  {badge}{schema ? ` (${counts[badge] || 0})` : ''}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
         <input
           value={search}
