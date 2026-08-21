@@ -12,7 +12,7 @@ const FEATURES = [
   { icon: '🔗', name: 'Relationship Mapping', desc: 'Master-Detail, Lookup, and Hierarchical edges — color-coded' },
   { icon: '🏷️', name: 'Cloud / License Detection', desc: 'Badges for Platform, Sales, Service, Field Service, 30+ Industries clouds' },
   { icon: '🔍', name: 'Click-to-Explore', desc: 'Click any object to see every field, type, and badge in a side panel' },
-  { icon: '🎯', name: 'Focus Mode', desc: 'Isolate any object and its direct relationships instantly' },
+  { icon: '📊', name: 'Object Summary', desc: 'Click any object to see field stats, triggers, validation rules, and tech debt insights' },
   { icon: '📄', name: 'PDF & PNG Export', desc: 'Save the current diagram view as a PDF or image file' },
 ];
 
@@ -146,7 +146,6 @@ export default function App() {
   const [selectedObjects, setSelectedObjects] = useState(new Set());
   const [showEdgeLabels, setShowEdgeLabels] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [focusedNode, setFocusedNode] = useState(null);
 
   const handleToggle = (name) => {
     setSelectedObjects(prev => {
@@ -273,19 +272,11 @@ export default function App() {
           />
 
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-            <div style={{ padding: '8px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: 16, alignItems: 'center', background: '#fff', flexShrink: 0, flexWrap: 'wrap' }}>
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: 16, alignItems: 'center', background: '#fff', flexShrink: 0 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', cursor: 'pointer' }}>
                 <input type="checkbox" checked={showEdgeLabels} onChange={e => setShowEdgeLabels(e.target.checked)} />
                 Show relationship labels
               </label>
-              {focusedNode && (
-                <button
-                  style={{ padding: '4px 10px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 5, fontSize: 12, cursor: 'pointer' }}
-                  onClick={() => setFocusedNode(null)}
-                >
-                  Clear focus: {focusedNode}
-                </button>
-              )}
               {loading && (
                 <span style={{ fontSize: 12, color: '#64748b', marginLeft: 'auto' }}>
                   Loading org schema — may take up to a minute for large orgs…
@@ -310,9 +301,7 @@ export default function App() {
                   schema={schema || []}
                   selectedObjects={selectedObjects}
                   showEdgeLabels={showEdgeLabels}
-                  focusedNode={focusedNode}
                   onNodeClick={node => setSelectedNode(node.data)}
-                  onFocusNode={name => setFocusedNode(name)}
                 />
               )}
               {selectedNode && (

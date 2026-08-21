@@ -2,33 +2,12 @@ const COLS = 5;
 const H_GAP = 280;
 const V_GAP = 160;
 
-export function buildGraph(schema, selectedObjectNames, focusedNode) {
+export function buildGraph(schema, selectedObjectNames) {
   if (!selectedObjectNames || selectedObjectNames.size === 0) {
     return { nodes: [], edges: [] };
   }
 
-  let objects = schema.filter(o => selectedObjectNames.has(o.name));
-
-  if (focusedNode) {
-    const directNeighbors = new Set([focusedNode]);
-    const focusObj = objects.find(o => o.name === focusedNode);
-    if (focusObj) {
-      for (const f of focusObj.fields) {
-        if (f.referenceTo && f.referenceTo.length > 0) directNeighbors.add(f.referenceTo[0]);
-      }
-      for (const r of focusObj.childRelationships) {
-        directNeighbors.add(r.childSObject);
-      }
-    }
-    for (const obj of objects) {
-      if (obj.name === focusedNode) continue;
-      for (const f of obj.fields) {
-        if (f.referenceTo && f.referenceTo.includes(focusedNode)) directNeighbors.add(obj.name);
-      }
-    }
-    objects = objects.filter(o => directNeighbors.has(o.name));
-  }
-
+  const objects = schema.filter(o => selectedObjectNames.has(o.name));
   const objectNames = new Set(objects.map(o => o.name));
 
   const nodes = objects.map((obj, i) => ({

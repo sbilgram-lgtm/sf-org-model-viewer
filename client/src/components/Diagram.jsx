@@ -181,20 +181,17 @@ function RelationshipLegend() {
   );
 }
 
-function DiagramInner({ schema, selectedObjects, showEdgeLabels, focusedNode, onNodeClick, onFocusNode }) {
+function DiagramInner({ schema, selectedObjects, showEdgeLabels, onNodeClick }) {
   const [edgeTooltip, setEdgeTooltip] = useState(null);
 
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
-    () => buildGraph(schema, selectedObjects, focusedNode),
-    [schema, selectedObjects, focusedNode]
+    () => buildGraph(schema, selectedObjects),
+    [schema, selectedObjects]
   );
 
   const styledNodes = useMemo(() =>
-    rawNodes.map(n => ({
-      ...n,
-      data: { ...n.data, onFocus: onFocusNode },
-    })),
-    [rawNodes, onFocusNode]
+    rawNodes.map(n => ({ ...n })),
+    [rawNodes]
   );
 
   const styledEdges = useMemo(() =>
@@ -321,16 +318,14 @@ function DiagramInner({ schema, selectedObjects, showEdgeLabels, focusedNode, on
   );
 }
 
-export default function Diagram({ schema, selectedObjects, showEdgeLabels, focusedNode, onNodeClick, onFocusNode }) {
+export default function Diagram({ schema, selectedObjects, showEdgeLabels, onNodeClick }) {
   return (
     <ReactFlowProvider>
       <DiagramInner
         schema={schema}
         selectedObjects={selectedObjects}
         showEdgeLabels={showEdgeLabels}
-        focusedNode={focusedNode}
         onNodeClick={onNodeClick}
-        onFocusNode={onFocusNode}
       />
     </ReactFlowProvider>
   );

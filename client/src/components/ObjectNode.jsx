@@ -18,7 +18,7 @@ function getBadgeColor(cloud) {
 }
 
 export default function ObjectNode({ data, selected }) {
-  const { label, name, cloudBadge, fields = [], onFocus } = data;
+  const { label, name, cloudBadge, fields = [] } = data;
   const badgeColor = getBadgeColor(cloudBadge);
 
   return (
@@ -34,20 +34,7 @@ export default function ObjectNode({ data, selected }) {
       <Handle type="target" position={Position.Left} style={{ background: '#94a3b8' }} />
       <Handle type="source" position={Position.Right} style={{ background: '#94a3b8' }} />
 
-      <button
-        title="Focus on this object"
-        onClick={e => { e.stopPropagation(); onFocus && onFocus(name); }}
-        style={{
-          position: 'absolute', top: 6, right: 6,
-          background: 'transparent', border: '1px solid #e2e8f0',
-          borderRadius: 4, padding: '1px 6px', fontSize: 10,
-          color: '#94a3b8', cursor: 'pointer', lineHeight: '16px',
-        }}
-      >
-        Focus
-      </button>
-
-      <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', paddingRight: 40 }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{label}</div>
       <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{name}</div>
 
       <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
