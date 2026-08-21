@@ -102,14 +102,44 @@ router.get('/object-info/:name', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Invalid object name' });
   }
   const conn = getConn(req);
-  const result = { triggers: [], validationRules: [] };
+  const result = {
+    triggers: [],
+    validationRules: [],
+    fieldsOnLayouts: null,   // null = unavailable; array = success
+    fieldDefinitions: [],
+  };
 
   await Promise.all([
     conn.tooling.query(`SELECT Id, Name, Status FROM ApexTrigger WHERE TableEnumOrId = '${name}'`)
       .then(r => { result.triggers = r.records || []; })
       .catch(() => {}),
+
     conn.tooling.query(`SELECT Id, FullName, Active FROM ValidationRule WHERE EntityDefinition.QualifiedApiName = '${name}'`)
       .then(r => { result.validationRules = r.records || []; })
+      .catch(() => {}),
+
+    // Fields that appear on at least one page layout
+    conn.request(`/services/data/v${conn.version}/sobjects/${name}/describe/layouts/`)
+      .then(data => {
+        const onLayout = new Set();
+        for (const layout of data.layouts || []) {
+          for (const section of layout.sections || []) {
+            for (const row of section.layoutRows || []) {
+              for (const item of row.layoutItems || []) {
+                if (item.field) onLayout.add(item.field);
+              }
+            }
+          }
+        }
+        result.fieldsOnLayouts = [...onLayout];
+      })
+      .catch(() => {}),
+
+    // Custom field metadata (description, help text)
+    conn.tooling.query(
+      `SELECT QualifiedApiName, Description, InlineHelpText FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName = '${name}' AND IsCustom = true`
+    )
+      .then(r => { result.fieldDefinitions = r.records || []; })
       .catch(() => {}),
   ]);
 

@@ -68,6 +68,135 @@ function StatCard({ label, value, accent }) {
   );
 }
 
+const SEVERITY = {
+  high:   { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', dot: '#ef4444' },
+  medium: { bg: '#fffbeb', border: '#fde68a', text: '#b45309', dot: '#f59e0b' },
+  low:    { bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d', dot: '#22c55e' },
+};
+
+function DebtIssue({ issue }) {
+  const [expanded, setExpanded] = useState(false);
+  const c = SEVERITY[issue.severity];
+  return (
+    <div style={{ marginBottom: 8, border: `1px solid ${c.border}`, borderRadius: 6, overflow: 'hidden' }}>
+      <div
+        onClick={() => setExpanded(x => !x)}
+        style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', background: c.bg, cursor: 'pointer' }}
+      >
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.dot, flexShrink: 0, marginTop: 3 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{issue.title}</div>
+          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>{issue.detail}</div>
+        </div>
+        <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{expanded ? '▾' : '▸'}</span>
+      </div>
+      {expanded && (
+        <div style={{ padding: '6px 10px 8px', background: '#fff', borderTop: `1px solid ${c.border}` }}>
+          {issue.items.map((item, i) => (
+            <div key={i} style={{ fontSize: 11, color: '#334155', padding: '3px 0', borderBottom: i < issue.items.length - 1 ? '1px solid #f8fafc' : 'none', fontFamily: 'monospace' }}>
+              {item}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TechDebtSection({ node, objectInfo }) {
+  const { fieldsOnLayouts, fieldDefinitions = [], triggers = [], validationRules = [] } = objectInfo;
+  const customFields = node.fields.filter(f => f.name.endsWith('__c'));
+  const issues = [];
+
+  if (fieldsOnLayouts !== null) {
+    const onLayout = new Set(fieldsOnLayouts);
+    const missing = customFields.filter(f => !onLayout.has(f.name));
+    if (missing.length > 0) {
+      issues.push({
+        id: 'layout',
+        severity: 'high',
+        title: `${missing.length} custom field${missing.length !== 1 ? 's' : ''} not on any page layout`,
+        detail: 'These fields exist in the schema but are invisible to users — no layout surfaces them.',
+        items: missing.map(f => `${f.label}  (${f.name})`),
+      });
+    }
+  }
+
+  if (fieldDefinitions.length > 0) {
+    const noDesc = fieldDefinitions.filter(fd => !fd.Description);
+    if (noDesc.length > 0) {
+      issues.push({
+        id: 'nodesc',
+        severity: 'medium',
+        title: `${noDesc.length} custom field${noDesc.length !== 1 ? 's' : ''} missing description`,
+        detail: 'No description makes it hard to know the purpose of a field during maintenance or onboarding.',
+        items: noDesc.map(fd => fd.QualifiedApiName),
+      });
+    }
+    const noHelp = fieldDefinitions.filter(fd => !fd.InlineHelpText);
+    if (noHelp.length > 0) {
+      issues.push({
+        id: 'nohelp',
+        severity: 'low',
+        title: `${noHelp.length} custom field${noHelp.length !== 1 ? 's' : ''} missing inline help text`,
+        detail: 'Help text guides users on what to enter. Missing help text is a UX gap.',
+        items: noHelp.map(fd => fd.QualifiedApiName),
+      });
+    }
+  }
+
+  const inactiveTriggers = triggers.filter(t => t.Status !== 'Active');
+  if (inactiveTriggers.length > 0) {
+    issues.push({
+      id: 'triggers',
+      severity: 'medium',
+      title: `${inactiveTriggers.length} inactive Apex trigger${inactiveTriggers.length !== 1 ? 's' : ''}`,
+      detail: 'Inactive triggers are likely dead code. Review: reactivate, refactor, or delete.',
+      items: inactiveTriggers.map(t => t.Name),
+    });
+  }
+
+  const inactiveRules = validationRules.filter(vr => !vr.Active);
+  if (inactiveRules.length > 0) {
+    issues.push({
+      id: 'rules',
+      severity: 'low',
+      title: `${inactiveRules.length} inactive validation rule${inactiveRules.length !== 1 ? 's' : ''}`,
+      detail: 'Inactive rules may be remnants of past configurations — review and clean up.',
+      items: inactiveRules.map(vr => vr.FullName?.split('.').pop() || vr.FullName),
+    });
+  }
+
+  const totalIssues = issues.length;
+  const highCount = issues.filter(i => i.severity === 'high').length;
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: 6, marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          Potential Technical Debt
+        </span>
+        {totalIssues > 0 && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+            background: highCount > 0 ? '#fee2e2' : '#fffbeb',
+            color: highCount > 0 ? '#dc2626' : '#b45309',
+          }}>
+            {totalIssues} issue{totalIssues !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+      {totalIssues === 0 ? (
+        <div style={{ fontSize: 12, color: '#15803d', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>✓</span> No issues detected
+        </div>
+      ) : (
+        issues.map(issue => <DebtIssue key={issue.id} issue={issue} />)
+      )}
+    </div>
+  );
+}
+
 function MetadataList({ title, items, loading, emptyMsg, renderItem }) {
   const [open, setOpen] = useState(true);
   return (
@@ -255,6 +384,13 @@ export default function SidePanel({ node, onClose }) {
                 {stats.recTypes} custom record type{stats.recTypes !== 1 ? 's' : ''} defined. Switch to Fields tab to see individual field assignments.
               </div>
             </div>
+          )}
+
+          {infoLoading && (
+            <div style={{ fontSize: 12, color: '#94a3b8', padding: '8px 0' }}>Analyzing for technical debt…</div>
+          )}
+          {!infoLoading && objectInfo && (
+            <TechDebtSection node={node} objectInfo={objectInfo} />
           )}
 
         </div>
