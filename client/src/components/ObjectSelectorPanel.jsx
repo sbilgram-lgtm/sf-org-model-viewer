@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
+import { computeJunctionInfo } from '../utils/buildGraph';
 
 const STATIC_OPTIONS = [
   { value: 'all',      label: 'All Objects' },
+  { value: 'junction', label: 'Junction Objects' },
   { value: 'platform', label: 'Platform Only' },
   { value: 'standard', label: 'Standard Objects' },
   { value: 'custom',   label: 'Custom Objects' },
@@ -13,6 +15,8 @@ const SKIP_BADGES = new Set(['Platform', 'Custom (Org)']);
 export default function ObjectSelectorPanel({ schema, loading, selectedObjects, onToggle, onSelectAll, onClearAll }) {
   const [filterType, setFilterType] = useState('all');
   const [search, setSearch] = useState('');
+
+  const junctionInfo = useMemo(() => computeJunctionInfo(schema || []), [schema]);
 
   // Distinct cloud badges present in this org, sorted — drives the dynamic optgroup
   const cloudBadges = useMemo(() => {
@@ -28,6 +32,7 @@ export default function ObjectSelectorPanel({ schema, loading, selectedObjects, 
     if (!schema) return {};
     const c = {
       all:      schema.length,
+      junction: Object.keys(junctionInfo).length,
       platform: schema.filter(o => !o.custom && o.cloudBadge === 'Platform').length,
       standard: schema.filter(o => !o.custom).length,
       custom:   schema.filter(o => o.custom).length,
@@ -39,7 +44,7 @@ export default function ObjectSelectorPanel({ schema, loading, selectedObjects, 
       }
     }
     return c;
-  }, [schema]);
+  }, [schema, junctionInfo]);
 
   const filtered = useMemo(() => {
     if (!schema) return [];
@@ -47,6 +52,7 @@ export default function ObjectSelectorPanel({ schema, loading, selectedObjects, 
     if (filterType === 'platform')      items = schema.filter(o => !o.custom && o.cloudBadge === 'Platform');
     else if (filterType === 'standard') items = schema.filter(o => !o.custom);
     else if (filterType === 'custom')   items = schema.filter(o => o.custom);
+    else if (filterType === 'junction') items = schema.filter(o => !!junctionInfo[o.name]);
     else if (filterType === 'all')      items = schema;
     else                                items = schema.filter(o => o.cloudBadge === filterType); // cloud badge
     if (search.trim()) {
@@ -54,7 +60,7 @@ export default function ObjectSelectorPanel({ schema, loading, selectedObjects, 
       items = items.filter(o => o.name.toLowerCase().includes(q) || o.label.toLowerCase().includes(q));
     }
     return items;
-  }, [schema, filterType, search]);
+  }, [schema, filterType, search, junctionInfo]);
 
   return (
     <div style={{ width: 248, flexShrink: 0, borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden' }}>

@@ -18,7 +18,7 @@ function getBadgeColor(cloud) {
 }
 
 export default function ObjectNode({ data, selected }) {
-  const { label, name, cloudBadge, fields = [] } = data;
+  const { label, name, cloudBadge, fields = [], isJunction } = data;
   const badgeColor = getBadgeColor(cloudBadge);
 
   return (
@@ -46,6 +46,13 @@ export default function ObjectNode({ data, selected }) {
         </span>
         <span style={{ fontSize: 10, color: '#94a3b8' }}>{fields.length} fields</span>
       </div>
+      {isJunction && (
+        <div style={{ marginTop: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>
+            Junction
+          </span>
+        </div>
+      )}
     </div>
   );
 }

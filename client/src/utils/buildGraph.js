@@ -2,11 +2,37 @@ const COLS = 5;
 const H_GAP = 280;
 const V_GAP = 160;
 
+export function computeJunctionInfo(schema) {
+  if (!schema) return {};
+  const parentsByObject = {};
+  for (const obj of schema) {
+    for (const f of obj.fields) {
+      if (!f.referenceTo || f.referenceTo.length === 0) continue;
+      const target = f.referenceTo[0];
+      const parentObj = schema.find(o => o.name === target);
+      const childRel = parentObj?.childRelationships.find(
+        r => r.childSObject === obj.name && r.field === f.name
+      );
+      if (childRel?.cascadeDelete) {
+        if (!parentsByObject[obj.name]) parentsByObject[obj.name] = [];
+        if (!parentsByObject[obj.name].includes(target)) parentsByObject[obj.name].push(target);
+      }
+    }
+  }
+  const result = {};
+  for (const [name, parents] of Object.entries(parentsByObject)) {
+    const obj = schema.find(o => o.name === name);
+    if (obj?.custom && parents.length >= 2) result[name] = parents;
+  }
+  return result;
+}
+
 export function buildGraph(schema, selectedObjectNames) {
   if (!selectedObjectNames || selectedObjectNames.size === 0) {
     return { nodes: [], edges: [] };
   }
 
+  const junctionInfo = computeJunctionInfo(schema);
   const objects = schema.filter(o => selectedObjectNames.has(o.name));
   const objectNames = new Set(objects.map(o => o.name));
 
@@ -17,7 +43,11 @@ export function buildGraph(schema, selectedObjectNames) {
       x: (i % COLS) * H_GAP,
       y: Math.floor(i / COLS) * V_GAP,
     },
-    data: { ...obj },
+    data: {
+      ...obj,
+      isJunction: !!junctionInfo[obj.name],
+      junctionParents: junctionInfo[obj.name] || [],
+    },
   }));
 
   const edgeSet = new Set();
@@ -29,7 +59,6 @@ export function buildGraph(schema, selectedObjectNames) {
       const target = f.referenceTo[0];
       if (!objectNames.has(target)) continue;
 
-      // Detect master-detail via parent's childRelationships (field-level cascadeDelete is always undefined)
       const parentObj = schema.find(o => o.name === target);
       const childRel = parentObj?.childRelationships.find(r => r.childSObject === obj.name && r.field === f.name);
 

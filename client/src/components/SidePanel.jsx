@@ -287,6 +287,11 @@ export default function SidePanel({ node, onClose }) {
               Custom Object
             </span>
           )}
+          {node.isJunction && (
+            <span style={{ marginTop: 6, marginLeft: 6, display: 'inline-block', fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'rgba(254,243,199,0.5)', border: '1px solid rgba(253,230,138,0.6)' }}>
+              Junction Object
+            </span>
+          )}
         </div>
         <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 26, height: 26, fontSize: 16, cursor: 'pointer', color: 'white', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
       </div>
@@ -320,6 +325,18 @@ export default function SidePanel({ node, onClose }) {
       {/* Summary tab */}
       {tab === 'summary' && (
         <div style={{ overflowY: 'auto', flex: 1, padding: '14px 16px' }}>
+
+          {node.isJunction && node.junctionParents?.length >= 2 && (
+            <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 6, padding: '10px 12px', marginBottom: 14 }}>
+              <div style={{ fontWeight: 700, color: '#92400e', fontSize: 12, marginBottom: 4 }}>Junction Object</div>
+              <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.5 }}>
+                Creates a many-to-many relationship between{' '}
+                <strong>{node.junctionParents[0]}</strong> and <strong>{node.junctionParents[1]}</strong>
+                {node.junctionParents.length > 2 && ` (and ${node.junctionParents.length - 2} more parent${node.junctionParents.length - 2 !== 1 ? 's' : ''})`}.
+                {' '}Both parent relationships are Master-Detail — this record cannot exist without both parents.
+              </div>
+            </div>
+          )}
 
           <div style={{ fontSize: 11, fontWeight: 700, color: '#334155', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>Field Breakdown</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
